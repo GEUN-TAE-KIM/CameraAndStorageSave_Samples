@@ -25,6 +25,10 @@ import kr.rmsxo.camerasaveandimportappfile.util.BaseFragment
 import java.util.Locale
 
 class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_camera) {
+    enum class CameraState {
+        CAMERA1,
+        CAMERA2,
+    }
 
     private lateinit var cameraLauncher: ActivityResultLauncher<Intent>
     private lateinit var permissionLauncher: ActivityResultLauncher<String>
@@ -32,6 +36,10 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
     private lateinit var storageLauncher2: ActivityResultLauncher<Intent>
     private var currentPhotoUri: Uri? = null
     private var currentPhotoUri2: Uri? = null
+
+    private var currentCameraState: CameraState = CameraState.CAMERA1
+    // 카메라 앱이 종료되었는지 여부를 추적하는 변수 추가
+    private var isCameraAppClosed = false
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -44,11 +52,32 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         cameraLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
                 if (result.resultCode == Activity.RESULT_OK) {
-                    currentPhotoUri?.let {
-                        Log.d("Camera", "Image saved at: $it")
-                    } ?: run {
-                        Log.e("Camera", "currentPhotoUri is not initialized.")
+                    isCameraAppClosed = false
+                    when (currentCameraState) {
+                        CameraState.CAMERA1 -> {
+                            currentPhotoUri?.let { uri ->
+                                handleButtonUpload(
+                                    binding.buttonFileUploadEnd,
+                                    binding.buttonFileUploadDelete,
+                                    uri
+                                )
+                                isCameraAppClosed = true
+                            }
+                        }
+
+                        CameraState.CAMERA2 -> {
+                            currentPhotoUri2?.let {uri ->
+                                handleButtonUpload(
+                                    binding.buttonFileUploadEnd2,
+                                    binding.buttonFileUploadDelete2,
+                                    uri
+                                )
+                                isCameraAppClosed = true
+                            }
+                        }
                     }
+                } else {
+                    isCameraAppClosed = true
                 }
             }
 
@@ -128,6 +157,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
 
         // 카메라 실행
         binding.buttonCamera.setOnClickListener {
+            currentCameraState = CameraState.CAMERA1
             requestCameraPermission { launchCamera { uri -> currentPhotoUri = uri } }
         }
 
@@ -168,6 +198,7 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         }
 
         binding.buttonCamera2.setOnClickListener {
+            currentCameraState = CameraState.CAMERA2
             requestCameraPermission { launchCamera { uri -> currentPhotoUri2 = uri } }
         }
 
@@ -190,7 +221,9 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
 
     private fun handleButtonUpload(buttonEnd: Button, buttonDelete: Button, uri: Uri?) {
         uri?.let {
-            showDialogImage(it)
+            if (isCameraAppClosed) {  // 카메라 앱이 종료되지 않았을 때만 미리보기 표시
+                showDialogImage(it)
+            }
             // 데이터 베이스 저장 별도 처리 필요
         }
         buttonEnd.text = uri?.let { getFileName(it) }
@@ -269,9 +302,6 @@ class CameraFragment : BaseFragment<FragmentCameraBinding>(R.layout.fragment_cam
         builder.setPositiveButton("확인", null)
         builder.show()
 
-        binding.buttonCamera.setOnClickListener {
-            requestCameraPermission { launchCamera { uri -> currentPhotoUri2 = uri } }
-        }
 
     }
 
