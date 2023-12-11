@@ -3,7 +3,7 @@
 
 </br>
 
-## 기존 Material 버전 상세 내용
+상세 내용
 https://velog.io/@rmsxo5678/Android-Camera-And-Storage-Save
 
 </br>
